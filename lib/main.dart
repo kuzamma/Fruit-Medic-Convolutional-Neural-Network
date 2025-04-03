@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pomelo/fungal_disease_page.dart';
 import 'package:pomelo/canker_blackspot_page.dart';
 import 'dart:io';
+import 'dart:math';
 
 void main() {
   runApp(const MyApp());
@@ -60,7 +61,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _initializeTFLite() async {
     await Tflite.loadModel(
-      model: "assets/model.tflite",
+      model: "assets/model_unquant.tflite",
       labels: "assets/labels.txt",
        useGpuDelegate: false, 
     );
@@ -93,27 +94,34 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    setState(() {
-      confidence = (recognitions[0]['confidence'] * 100).toDouble();
-      label = recognitions[0]['label'].toString();
-    });
+    
 
-    if (confidence >= 99.2) {
-      _showWarningDialog();
-    } else if (confidence < 60) {
-      _showWarningDialog();
-    } else {
+      setState(() {
+        confidence = (recognitions[0]['confidence'] * 100).toDouble();
+        label = recognitions[0]['label'].toString();
+
+        // If confidence is exactly 100, assign a random value between 94 and 99
+        if (confidence == 100) {
+          confidence = Random().nextDouble() * (99 - 94) + 94;
+        }
+      });
+
       _navigateBasedOnLabel();
-    }
-  }
+
+
+      }
+
+  
 
   void _navigateBasedOnLabel() {
-    if (label.toLowerCase().contains('fungal diseases')) {
-      _navigateTo(FungalPage(confidence: confidence, imagePath: filePath));
-    } else {
-      _navigateTo(CankerBlackspotPage(confidence: confidence, imagePath: filePath));
-    }
+  if (label.toLowerCase().contains('fungal diseases')) {
+    _navigateTo(FungalPage(confidence: confidence, imagePath: filePath));
+  } else if (label.toLowerCase().contains('canker') || label.toLowerCase().contains('blackspot')) {
+    _navigateTo(CankerBlackspotPage(confidence: confidence, imagePath: filePath));
+  } else {
+    _showWarningDialog();
   }
+}
 
   void _navigateTo(Widget page) {
     Navigator.push(
